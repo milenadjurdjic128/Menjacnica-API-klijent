@@ -13,41 +13,50 @@ import rs.ac.bg.fon.Valuta;
 
 public class JsonRatesAPIKomunikacija {
 
-	String appKey = "jr-ba8999934fc5a7ab64a4872fb4ed9af7";
-	String jsonRatesURL = "http://jsonrates.com/get/";
+	static String appKey = "jr-ba8999934fc5a7ab64a4872fb4ed9af7";
+	static String jsonRatesURL = "http://jsonrates.com/get/";
+	static String url;
 
-	public Valuta[] vratiIznosKurseva(String[] valute, String from, String to) {
+	public static Valuta[] vratiIznosKurseva(String[] valute) {
 		//http://jsonrates.com/get/?from=EUR&to=RSD&apiKey=jr-ba8999934fc5a7ab64a4872fb4ed9af7
 
 		Valuta[] kursevi = new Valuta[valute.length];
-		
-		for (int i = 0; i < valute.length; i++) {
-			String url = jsonRatesURL + "?" +
-					"from=" + from +
-					"&to=" + to +
-					"&apiKey=" + appKey;
 
-			try {
-				String result = sendGet(url);
+		for (int j = 0; j < valute.length; j++) {
+			for (int k = 0; k < valute.length; k++) {
+				ispisi(valute[j], valute[k]);
 
-				Gson gson = new GsonBuilder().create();
-				JsonObject jsonResult = gson.fromJson(result, JsonObject.class);
+				try {
+					String result = sendGet(url);
 
-				Valuta obj = new Valuta();
-				obj.setNaziv(valute[i]);
-				obj.setKurs(Double.parseDouble(jsonResult.get("rate").getAsString()));
-				
-				kursevi[i] = obj;
-				
-			} catch (Exception e) {
-				e.printStackTrace();
-			} 
+					Gson gson = new GsonBuilder().create();
+					JsonObject jsonResult = gson.fromJson(result, JsonObject.class);
+
+					Valuta obj = new Valuta();
+					obj.setNaziv(valute[j]);
+					obj.setKurs(Double.parseDouble(jsonResult.get("rate").getAsString()));
+
+					kursevi[j] = obj;
+
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+
 		}
-		
+
 		return kursevi;
 	}
 
-	private String sendGet(String url) throws Exception {
+	private static String ispisi(String from, String to) {
+		return url = jsonRatesURL + "?" +
+				"from=" + from +
+				"&to=" + to +
+				"&apiKey=" + appKey;
+	}
+
+
+	private static String sendGet(String url) throws Exception {
 		URL obj = new URL(url);
 		HttpURLConnection connection = (HttpURLConnection) obj.openConnection();
 

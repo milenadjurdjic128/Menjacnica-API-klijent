@@ -1,54 +1,63 @@
 package rs.ac.bg.fon.update;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.io.BufferedWriter;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.PrintWriter;
+import java.io.StringReader;
 import java.util.GregorianCalendar;
 import java.util.LinkedList;
-
-import org.json.JSONObject;
-
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
 
 import rs.ac.bg.fon.Valuta;
 import rs.ac.bg.fon.util.JsonRatesAPIKomunikacija;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.stream.JsonReader;
+
 public class AzuriranjeKursneListe {
 
-	private final String putanjaDoFajlaKursnaLista = "data/kursnaLista.json";
-	LinkedList<Valuta> kursevi = new LinkedList<Valuta>();
+	private final String putanjaDoFajlaKursnaLista = "data/kursevi.json";
+	private Valuta valuta;
 
-
-	@SuppressWarnings("unchecked")
 	public LinkedList<Valuta> ucitajValute() {
+		LinkedList<Valuta> kursevi = new LinkedList<Valuta>();
 		try {
-			ObjectInputStream in = new ObjectInputStream(new BufferedInputStream(new FileInputStream(putanjaDoFajlaKursnaLista)));
-			kursevi = (LinkedList<Valuta>)(in.readObject());
-
-			in.close();
-
+			FileReader read = new FileReader(putanjaDoFajlaKursnaLista);
+			Gson obj = new GsonBuilder().setPrettyPrinting().create();
+		
+			JsonObject json = obj.fromJson(read, JsonObject.class);
+			JsonArray nizKurseva = json.get("valute").getAsJsonArray(); 
+			
+			for (int i = 0; i < nizKurseva.size(); i++) {
+				valuta = new Valuta();
+				valuta.setKurs(nizKurseva.get(i).getAsJsonObject().get("kurs").getAsDouble());
+				valuta.setNaziv(nizKurseva.get(i).getAsJsonObject().get("naziv").getAsString());
+			}
+			
+			kursevi.add(valuta);
+			read.close();
+			
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 		return kursevi;
 	}
 
+	
 	public void upisiValute(LinkedList<Valuta> valute, GregorianCalendar datum) {
 
 		try {
-			ObjectOutputStream out = new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream(putanjaDoFajlaKursnaLista)));
-			JsonObject dateJson = new JsonObject();
-			dateJson.addProperty("datum", datum.toString());
+			PrintWriter upis = new PrintWriter(new BufferedWriter(new FileWriter(putanjaDoFajlaKursnaLista)));
+			JsonObject json = new JsonObject();
+			Gson gson = new GsonBuilder().setPrettyPrinting().create();
 
+			datum = new GregorianCalendar();
+			json.addProperty("datum", datum.toString());
 
-			out.writeObject(dateJson);
 			JsonArray kursArray = new JsonArray();
-
 			for (int i = 0; i < valute.size(); i++) {
 
 				JsonObject kursJson = new JsonObject();
@@ -57,32 +66,34 @@ public class AzuriranjeKursneListe {
 
 				kursArray.add(kursJson);
 			}
-			out.writeObject(kursArray);
-			out.close();
+			json.add("kursevi", kursArray);
+			
+			upis.println(gson.toJson(kursArray));
+			upis.close();
+
 		} catch (Exception e) {
 			e.printStackTrace();
 		} 
 
 	}
-	
+
 	public void azurirajValute() {
-		
+
 		LinkedList<Valuta> novi = ucitajValute();
-		
-		String[] nazivi = new String[kursevi.size()];
-		
+		String[] nazivi = new String[novi.size()];
+
 		for (int i = 0; i < nazivi.length; i++) {
-			nazivi[i] = kursevi.get(i).getNaziv();
+			nazivi[i] = novi.get(i).getNaziv();
 		}
-		
-		Valuta[] updateValute = JsonRatesAPIKomunikacija.vratiIznosKurseva(nazivi);
-		
-		for (int i = 0; i < updateValute.length; i++) {
+
+		LinkedList<Valuta> updateValute = JsonRatesAPIKomunikacija.vratiIznosKurseva(nazivi);
+
+		for (int i = 0; i < updateValute.size(); i++) {
 			if(!novi.contains(updateValute)) {
-				novi.add(updateValute[i]);
+				novi.add(updateValute.get(i));
 			}
 		}
-		
+
 		upisiValute(novi, new GregorianCalendar());
 	}
 
